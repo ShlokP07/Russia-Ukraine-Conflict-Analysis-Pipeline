@@ -68,8 +68,7 @@ A powerful web application for analyzing sentiment and toxicity trends across Re
 
 1. Clone the repository:
 ```bash
-git clone git@github.com:2024-Fall-CS-415-515/project-3-implementation-brain_rot.git
-cd project-3-implementation-brain_rot
+git clone git@github.com:ShlokP07/Russia-Ukraine-Conflict-Analysis-Pipeline.git
 ```
 
 2. Install Python dependencies:
