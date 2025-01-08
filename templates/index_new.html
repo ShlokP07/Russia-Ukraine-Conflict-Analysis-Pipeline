@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Type Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            font-size: 24px;
+        }
+
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        label {
+            font-weight: 600;
+            color: #495057;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        select {
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            width: 250px;
+            background-color: white;
+            cursor: pointer;
+        }
+
+        select:hover {
+            border-color: #adb5bd;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 600px;
+            margin-top: 20px;
+        }
+
+        #error-message {
+            display: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Media Type Analysis by Subreddit</h1>
+        
+        <div id="error-message"></div>
+        
+        <div class="controls">
+            <label for="subreddit-select">Select Subreddit:</label>
+            <select id="subreddit-select"></select>
+        </div>
+        
+        <div id="chart" class="chart-container">
+            <div class="loading">Loading data...</div>
+        </div>
+    </div>
+
+    <script>
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error-message').style.display = 'none';
+        }
+
+        function encodeSubreddit(subreddit) {
+            return encodeURIComponent(subreddit);
+        }
+
+        async function loadSubreddits() {
+            try {
+                const response = await fetch('/api/subreddits');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const subreddits = await response.json();
+                const select = document.getElementById('subreddit-select');
+                select.innerHTML = '';
+                
+                subreddits.forEach(subreddit => {
+                    const option = document.createElement('option');
+                    option.value = subreddit;
+                    option.textContent = `r/${subreddit}`;
+                    select.appendChild(option);
+                });
+
+                if (subreddits.length > 0) {
+                    await updateChart(subreddits[0]);
+                }
+            } catch (error) {
+                showError(`Error loading subreddits: ${error.message}`);
+            }
+        }
+
+        async function updateChart(subreddit) {
+            hideError();
+            const chartDiv = document.getElementById('chart');
+            chartDiv.innerHTML = '<div class="loading">Loading data...</div>';
+            
+            try {
+                const encodedSubreddit = encodeSubreddit(subreddit);
+                const response = await fetch(`/api/media-metrics/${encodedSubreddit}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.length === 0) {
+                    throw new Error('No data available for this subreddit');
+                }
+
+                const trace1 = {
+                    x: data.map(d => d.derived_media_type),
+                    y: data.map(d => d.avg_sentiment),
+                    name: 'Sentiment',
+                    type: 'bar',
+                    marker: {
+                        color: '#2196F3'
+                    },
+                    text: data.map(d => d.avg_sentiment.toFixed(3)),
+                    textposition: 'auto',
+                };
+
+                const trace2 = {
+                    x: data.map(d => d.derived_media_type),
+                    y: data.map(d => d.avg_toxicity),
+                    name: 'Toxicity',
+                    type: 'bar',
+                    marker: {
+                        color: '#FF5722'
+                    },
+                    text: data.map(d => d.avg_toxicity.toFixed(3)),
+                    textposition: 'auto',
+                };
+
+                const layout = {
+                    title: {
+                        text: `Media Type Analysis for r/${subreddit}`,
+                        font: { size: 24 }
+                    },
+                    barmode: 'group',
+                    xaxis: {
+                        title: 'Media Type',
+                        tickangle: -45
+                    },
+                    yaxis: {
+                        title: 'Score',
+                        range: [-1, 1]
+                    },
+                    margin: { 
+                        t: 100, 
+                        l: 100, 
+                        r: 50, 
+                        b: 100 
+                    },
+                    showlegend: true,
+                    legend: {
+                        x: 0.5,
+                        y: 1.15,
+                        xanchor: 'center',
+                        orientation: 'h'
+                    }
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: true,
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                };
+
+                Plotly.newPlot('chart', [trace1, trace2], layout, config);
+
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+                chartDiv.innerHTML = '<div class="loading">No data available</div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSubreddits();
+            
+            document.getElementById('subreddit-select')
+                .addEventListener('change', (e) => updateChart(e.target.value));
+        });
+    </script>
+</body>
+</html>

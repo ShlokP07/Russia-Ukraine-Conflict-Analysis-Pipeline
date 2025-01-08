@@ -1,0 +1,32 @@
+# Environment variables for all projects
+**/.env
+*/.env.
+
+# Virtual environments for all projects
+**/venv/
+**/env/
+**/.venv/
+**/ENV/
+
+**/logs/
+**/pid/
+
+chan_crawler/.env
+reddit_crawler/.env
+
+chan_crawler/venv
+reddit_crawler/venv
+
+chan_crawler/logs
+chan_crawler/pid
+
+reddit_crawler/logs
+
+logs
+pids
+
+#Python
+env/
+/home/ssyeda/crawler/reddit_crawler/venv
+/home/ssyeda/crawler/chan_crawler/venv
+/home/ssyeda/crawler/chan_crawler/.env
